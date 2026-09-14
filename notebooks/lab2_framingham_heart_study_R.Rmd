@@ -1,0 +1,193 @@
+---
+title: "lab2_framingham_heart_study_r.Rmd"
+output: html_document
+author: "Thalie D-B"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(scales)
+```
+
+## Lab 2
+
+# Accessing Data
+This is data from the Framingham Heart Study. 
+
+```{r}
+data_url <- paste0(
+  "https://raw.githubusercontent.com/GauravPadawe/",
+  "Framingham-Heart-Study/master/framingham.csv"
+)
+
+fram <- read.csv(data_url, na.strings = c("NA", ""))
+```
+
+# View data structure
+
+```{r}
+cat("Rows:", nrow(fram), "\n")
+cat("Columns:", ncol(fram), "\n")
+head(fram)
+
+str(fram)
+```
+
+# Check for  missing values
+```{r}
+missing_n <- sort(colSums(is.na(fram)), decreasing = TRUE)
+missing_n[missing_n > 0]
+```
+
+# Variable Analysis and Transformations
+I chose to look at the variables for age, current smoker status and ten year CHD. I organized the data by creating age groups for age ranges and I created smoking status that translates the 0/1 data into no/yes, and established the display order. This is how I chose to display the data to make it easier to interpret.
+```{r}
+range(fram$age, na.rm = TRUE)
+table(fram$currentSmoker, useNA = "ifany")
+table(fram$TenYearCHD, useNA = "ifany")
+```
+```{r}
+analysis <- fram |>
+  select(age, currentSmoker, TenYearCHD) |>
+  filter(
+    !is.na(age),
+    !is.na(currentSmoker),
+    !is.na(TenYearCHD)
+  ) |>
+  mutate(
+    age_group = cut(
+      age,
+      breaks = c(30, 40, 50, 60, Inf),
+      labels = c("Under 40", "40–49", "50–59", "60+"),
+      right = FALSE
+    ),
+    smoking_status = factor(
+      currentSmoker,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    )
+  )
+
+excluded_n <- nrow(fram) - nrow(analysis)
+
+cat("Original participants:", nrow(fram), "\n")
+cat("Analysis participants:", nrow(analysis), "\n")
+cat("Participants excluded:", excluded_n, "\n")
+
+table(analysis$age_group)
+table(analysis$smoking_status)
+```
+
+# Ten Year CHD outcomes 
+Using the age and smoke status variables, I calcuated CHD prevelance. I grouped participants by age group and smoking status. For each group, I calculated the total number of participants, the amount of participants with CHD, and the percentage of participants who got CHD. I also compared the prevalence of CHD outcomes for each age group based on smoking status.
+```{r}
+summary_table <- analysis |>
+  group_by(age_group, smoking_status) |>
+  summarise(
+    n = n(),
+    chd_cases = sum(TenYearCHD),
+    chd_prevalence = mean(TenYearCHD),
+    .groups = "drop"
+  ) |>
+  mutate(chd_percent = 100 * chd_prevalence)
+
+summary_table |>
+  mutate(
+    prevalence_label = percent(chd_prevalence, accuracy = 0.1)
+  ) |>
+  select(
+    age_group,
+    smoking_status,
+    n,
+    chd_cases,
+    prevalence_label
+  )
+```
+```{r}
+cat("Participants represented:", sum(summary_table$n), "\n")
+cat("CHD cases represented:", sum(summary_table$chd_cases), "\n")
+
+stopifnot(sum(summary_table$n) == nrow(analysis))
+stopifnot(
+  sum(summary_table$chd_cases) == sum(analysis$TenYearCHD)
+)
+
+cat("Validation checks passed.\n")
+```
+```{r}
+non_smoker <- summary_table |>
+  filter(smoking_status == "No") |>
+  select(
+    age_group,
+    non_smoker_percent = chd_percent
+  )
+
+smoker <- summary_table |>
+  filter(smoking_status == "Yes") |>
+  select(
+    age_group,
+    smoker_percent = chd_percent
+  )
+
+prevalence_difference <- left_join(
+  non_smoker,
+  smoker,
+  by = "age_group"
+) |>
+  mutate(
+    difference =
+      smoker_percent - non_smoker_percent
+  )
+
+prevalence_difference
+```
+
+# Visualization
+I chose to do a grouped bar chart that shows the prevelance of 10 year CHD outcome percentage for each age group based on smoker status. 
+```{r}
+ggplot(
+  summary_table,
+  aes(
+    x = age_group,
+    y = chd_prevalence,
+    fill = smoking_status
+  )
+) +
+  geom_col(
+    position = position_dodge(width = 0.8),
+    width = 0.72
+  ) +
+  geom_text(
+    aes(label = percent(chd_prevalence, accuracy = 0.1)),
+    position = position_dodge(width = 0.8),
+    vjust = -0.35,
+    size = 3.5
+  ) +
+  scale_fill_manual(
+    values = c("#4C78A8", "#E45756")
+  ) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1),
+    limits = c(0, 0.35),
+    expand = expansion(mult = c(0, 0.04))
+  ) +
+  labs(
+    title = paste(
+      "Observed 10-year CHD prevalence by age group",
+      "and current smoking status"
+    ),
+    x = "Age group (years)",
+    y = "Participants with observed 10-year CHD outcome (%)",
+    fill = "Current smoker"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  )
+```
+
+# Interpretation
+The chart above shows the observed 10-year CHD prevalence by age group and current smoking status. The data shows that overall 10 year CHD was increasingly more prevelant for the older participants, prevalence ranged from 2.2-5.5% for participants under 40 and 26.7-29.9% for participants 60 or older. It also shows that within each age groups, the prevelance of CHD was higher for participants who are current smokers, the largest difference was 5.7 percentage points for participants who 50-59. 
