@@ -6,9 +6,7 @@ I used OpenAI Codex in the Codex desktop app with a GPT-5 model on September 14,
 
 ## Assignment planning
 
-I asked Codex to walk me through Lab 2 using learning checkpoints similar to the process I used for Lab 1. It helped me connect each part of the rubric to a repository file or notebook section. It also suggested examining observed 10-year CHD prevalence across age groups and current-smoking status as a question that could be implemented consistently in Python and R.
-
-I chose to continue with this question because it was appropriate for the epidemiology dataset and required a meaningful transformation, grouped analysis, visualization, and interpretation.
+I asked Codex to walk me through Lab 2 using learning checkpoints similar to the process I used for Lab 1. It helped me connect each part of the rubric to a repository file or notebook section.
 
 ## Python assistance
 
@@ -49,4 +47,4 @@ I personally:
 
 ## What I learned
 
-This assignment helped me understand why reproducibility requires more than saving completed output. The environments, package records, source notebooks, and clean execution tests allow another person to reproduce the analysis.
+This assignment helped me understand why reproducibility requires more than saving completed output. The environments, package records, source notebooks, and clean execution tests allow another person to reproduce the analysis. Now that I am done with the lab, I asked it to create me a final quiz to cover what I did for this assignment.
